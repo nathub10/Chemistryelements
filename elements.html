@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Chemistry Reaction Quiz Game</title>
+  <style>
+    body {
+      margin: 0;
+      overflow: hidden;
+      font-family: Arial;
+      background: url('C:/Users/enatasr/OneDrive - Ericsson/Desktop/python game/elements.jpg') no-repeat center center fixed;
+      background-size: cover;
+    }
+    canvas {
+      position: absolute;
+      top: 0;
+      left: 0;
+      z-index: 5;
+    }
+    #hud, #startBtn, #quizBox, #reactionBox, #message, #wrongPopup, #gameOverBox {
+      position: absolute;
+      z-index: 30;
+    }
+    #hud {
+      top: 10px;
+      left: 10px;
+      background: rgba(255, 255, 255, 0.7);
+      padding: 10px;
+      border-radius: 8px;
+      display: none;
+    }
+    #startBtn {
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      padding: 20px 40px;
+      font-size: 24px;
+      background-color: darkblue;
+      color: white;
+      border: none;
+      border-radius: 10px;
+      cursor: pointer;
+    }
+    #wrongPopup {
+      display: none;
+      font-size: 30px;
+      color: red;
+      background: rgba(255,255,255,0.9);
+      border: 2px solid red;
+      padding: 10px 20px;
+      top: 40%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      border-radius: 10px;
+      z-index: 100;
+    }
+    #quizBox {
+      display: none;
+      background: rgba(255, 255, 255, 0.95);
+      border: 2px solid #555;
+      padding: 20px;
+      top: 20%;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 320px;
+      border-radius: 12px;
+      box-shadow: 0 0 20px black;
+    }
+    #quizBox h3 {
+      margin: 0 0 10px;
+    }
+    #quizBox button {
+      display: block;
+      width: 100%;
+      margin: 5px 0;
+      padding: 8px;
+      font-size: 16px;
+    }
+    #reactionBox {
+      display: none;
+      background: white;
+      border: 2px solid #333;
+      border-radius: 10px;
+      padding: 10px;
+      top: 70%;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 400px;
+      text-align: center;
+      box-shadow: 0 0 15px #000;
+      font-weight: bold;
+      font-size: 18px;
+    }
+    #gameOverBox {
+      display: none;
+      top: 40%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: rgba(255, 255, 255, 0.95);
+      padding: 20px 40px;
+      border: 2px solid black;
+      border-radius: 15px;
+      font-size: 28px;
+      text-align: center;
+      box-shadow: 0 0 20px black;
+    }
+    #restartBtn {
+      margin-top: 15px;
+      padding: 10px 20px;
+      font-size: 20px;
+      background-color: darkred;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+  <canvas id="rainCanvas"></canvas>
+  <div id="hud">
+    Level: <span id="level">1</span> |
+    Score: <span id="score">0</span> |
+    Time: <span id="timer">15</span>
+  </div>
+  <div id="wrongPopup">❌ Wrong Answer!</div>
+  <div id="quizBox">
+    <h3 id="questionText">Loading...</h3>
+    <button class="optionBtn" onclick="checkAnswer(0)">Option 1</button>
+    <button class="optionBtn" onclick="checkAnswer(1)">Option 2</button>
+    <button class="optionBtn" onclick="checkAnswer(2)">Option 3</button>
+  </div>
+  <div id="reactionBox">Reaction in progress...</div>
+  <div id="gameOverBox">
+    <div id="finalMessage">Game Over</div>
+    <button id="restartBtn" onclick="location.reload()">Restart</button>
+  </div>
+  <button id="startBtn" onclick="startGame()">Start Game</button>
+
+  <audio id="bgMusic" src="https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3" autoplay loop></audio>
+  <script>
+    let score = 0;
+    let level = 1;
+    let timer;
+    let currentQ = 0;
+    let questions = [
+      { q: "What is the chemical symbol for Sodium?", options: ["Na", "So", "Sn"], correct: 0 },
+      { q: "Which element is used in light bulb filaments?", options: ["Tungsten", "Aluminium", "Copper"], correct: 0 },
+      { q: "What gas is produced when acid reacts with a metal?", options: ["Hydrogen", "Oxygen", "Carbon dioxide"], correct: 0 },
+      { q: "Which element is a noble gas?", options: ["Neon", "Chlorine", "Nitrogen"], correct: 0 },
+      { q: "Which metal is liquid at room temperature?", options: ["Mercury", "Lead", "Iron"], correct: 0 },
+      { q: "What is the symbol for Iron?", options: ["Ir", "Fe", "In"], correct: 1 },
+      { q: "Which element is used in making computer chips?", options: ["Silicon", "Carbon", "Tin"], correct: 0 },
+      { q: "What is the formula of water?", options: ["H2O", "HO2", "OH2"], correct: 0 },
+      { q: "What is the atomic number of Carbon?", options: ["6", "12", "8"], correct: 0 },
+      { q: "Which element has the symbol 'K'?", options: ["Potassium", "Phosphorus", "Krypton"], correct: 0 }
+    ];
+
+    function startGame() {
+      document.getElementById("startBtn").style.display = "none";
+      document.getElementById("quizBox").style.display = "block";
+      document.getElementById("hud").style.display = "block";
+      startTimer();
+      showQuestion();
+    }
+
+    function startTimer() {
+      let time = 15;
+      document.getElementById("timer").innerText = time;
+      timer = setInterval(() => {
+        time--;
+        document.getElementById("timer").innerText = time;
+        if (time <= 0) {
+          clearInterval(timer);
+          document.getElementById("finalMessage").innerText = "Game Over";
+          document.getElementById("gameOverBox").style.display = "block";
+          document.getElementById("quizBox").style.display = "none";
+          document.getElementById("hud").style.display = "none";
+        }
+      }, 1000);
+    }
+
+    function showQuestion() {
+      if (currentQ >= questions.length) {
+        document.getElementById("finalMessage").innerText = "🎉 Congrats! You Win!";
+        document.getElementById("gameOverBox").style.display = "block";
+        document.getElementById("quizBox").style.display = "none";
+        document.getElementById("hud").style.display = "none";
+        return;
+      }
+      const q = questions[currentQ];
+      document.getElementById("questionText").innerText = q.q;
+      const buttons = document.querySelectorAll('.optionBtn');
+      buttons.forEach((btn, i) => {
+        btn.innerText = q.options[i];
+      });
+    }
+
+    function checkAnswer(index) {
+      clearInterval(timer);
+      if (index === questions[currentQ].correct) {
+        score += 2;
+        document.getElementById("score").innerText = score;
+      } else {
+        document.getElementById("wrongPopup").style.display = "block";
+        setTimeout(() => document.getElementById("wrongPopup").style.display = "none", 1500);
+      }
+      currentQ++;
+      document.getElementById("level").innerText = Math.floor(score / 10) + 1;
+      startTimer();
+      showQuestion();
+    }
+  </script>
+</body>
+</html>
