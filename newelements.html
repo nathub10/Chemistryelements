@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Chemistry Reaction Quiz Game</title>
+  <style>
+    body {
+      margin: 0;
+      overflow: hidden;
+      font-family: Arial;
+      background: url('C:/Users/enatasr/elements.jpg') no-repeat center center fixed;
+      background-size: cover;
+    }
+    canvas {
+      position: absolute;
+      top: 0;
+      left: 0;
+      z-index: 5;
+    }
+    #hud, #startBtn, #quizBox, #reactionBox, #message, #wrongPopup, #gameOverBox, #answerSummary, #restartBtnFinal {
+      position: absolute;
+      z-index: 30;
+    }
+    #hud {
+      top: 10px;
+      left: 10px;
+      background: rgba(255, 255, 255, 0.7);
+      padding: 10px;
+      border-radius: 8px;
+      display: none;
+    }
+    #startBtn {
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      padding: 20px 40px;
+      font-size: 24px;
+      background-color: darkblue;
+      color: white;
+      border: none;
+      border-radius: 10px;
+      cursor: pointer;
+    }
+    #wrongPopup {
+      display: none;
+      font-size: 30px;
+      color: red;
+      background: rgba(255,255,255,0.9);
+      border: 2px solid red;
+      padding: 10px 20px;
+      top: 40%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      border-radius: 10px;
+      z-index: 100;
+    }
+    #quizBox {
+      display: none;
+      background: rgba(255, 255, 255, 0.95);
+      border: 2px solid #555;
+      padding: 20px;
+      top: 20%;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 320px;
+      border-radius: 12px;
+      box-shadow: 0 0 20px black;
+    }
+    #quizBox h3 {
+      margin: 0 0 10px;
+    }
+    #quizBox button {
+      display: block;
+      width: 100%;
+      margin: 5px 0;
+      padding: 8px;
+      font-size: 16px;
+    }
+    #reactionBox {
+      display: none;
+      background: white;
+      border: 2px solid #333;
+      border-radius: 10px;
+      padding: 10px;
+      top: 70%;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 400px;
+      text-align: center;
+      box-shadow: 0 0 15px #000;
+      font-weight: bold;
+      font-size: 18px;
+    }
+    #gameOverBox {
+      display: none;
+      top: 30%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: rgba(255, 255, 255, 0.95);
+      padding: 20px 40px;
+      border: 2px solid black;
+      border-radius: 15px;
+      font-size: 20px;
+      text-align: center;
+      box-shadow: 0 0 20px black;
+    }
+    #restartBtn, #restartBtnFinal {
+      margin-top: 15px;
+      padding: 10px 20px;
+      font-size: 18px;
+      background-color: darkred;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+    }
+    #answerSummary {
+      display: none;
+      top: 60%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: white;
+      padding: 20px;
+      border-radius: 12px;
+      box-shadow: 0 0 15px black;
+      max-height: 300px;
+      overflow-y: auto;
+      font-size: 14px;
+    }
+  </style>
+</head>
+<body>
+  <canvas id="rainCanvas"></canvas>
+  <div id="hud">
+    Level: <span id="level">1</span> |
+    Score: <span id="score">0</span> |
+    Time: <span id="timer">25</span>
+  </div>
+  <div id="wrongPopup">❌ Wrong Answer!</div>
+  <div id="quizBox">
+    <h3 id="questionText">Loading...</h3>
+    <button class="optionBtn" onclick="checkAnswer(0)">Option 1</button>
+    <button class="optionBtn" onclick="checkAnswer(1)">Option 2</button>
+    <button class="optionBtn" onclick="checkAnswer(2)">Option 3</button>
+  </div>
+  <div id="reactionBox">Reaction in progress...</div>
+  <div id="gameOverBox">
+    <div id="finalMessage">Game Over</div>
+    <button id="restartBtn" onclick="location.reload()">Restart</button>
+  </div>
+  <div id="answerSummary"></div>
+  <div id="restartBtnFinal" style="display:none; top:85%; left:50%; transform:translateX(-50%);">
+    <button onclick="location.reload()">Restart Game</button>
+  </div>
+  <button id="startBtn" onclick="startGame()">Start Game</button>
+  <audio id="bgMusic" src="https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3" autoplay loop></audio>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      document.getElementById('bgMusic').play().catch(() => {
+        document.addEventListener('click', () => {
+          document.getElementById('bgMusic').play();
+        }, { once: true });
+      });
+    });
+
+    let score = 0;
+    let level = 1;
+    let timer;
+    let currentQ = 0;
+    let time;
+    const TIME_LIMIT = 25;
+    const answeredQuestions = [];
+
+    const questions = [
+      { q: "What is the chemical symbol for water?", options: ["H2O", "O2", "CO2"], correct: 0 },
+      { q: "Which gas is released in acid-metal reactions?", options: ["Hydrogen", "Oxygen", "Carbon Dioxide"], correct: 0 },
+      { q: "Which is a noble gas?", options: ["Helium", "Hydrogen", "Nitrogen"], correct: 0 },
+      { q: "Na + Cl₂ gives?", options: ["NaCl", "NaCl₂", "Na₂Cl"], correct: 0 },
+      { q: "CaCO₃ → CaO + CO₂ is what type of reaction?", options: ["Decomposition", "Combination", "Displacement"], correct: 0 },
+      { q: "Newlands' Octaves is based on which concept?", options: ["Every 8th element is similar", "Atomic mass increases by 2", "Same valency"], correct: 0 },
+      { q: "Which element follows sodium in Newlands’ Octaves showing similar properties?", options: ["Magnesium", "Potassium", "Calcium"], correct: 1 },
+      { q: "Which is a limitation of Newlands’ Octaves?", options: ["Worked only till Calcium", "Didn’t arrange by mass", "Ignored reactivity"], correct: 0 },
+      { q: "Who proposed the Law of Octaves?", options: ["John Newlands", "Mendeleev", "Dobereiner"], correct: 0 },
+      { q: "Newlands' Law of Octaves resembles which musical idea?", options: ["Piano Octaves", "Guitar Chords", "Violin Strings"], correct: 0 }
+    ];
+
+    function startGame() {
+      document.getElementById("startBtn").style.display = "none";
+      document.getElementById("quizBox").style.display = "block";
+      document.getElementById("hud").style.display = "block";
+      showQuestion();
+      startTimer();
+    }
+
+    function startTimer() {
+      time = TIME_LIMIT;
+      document.getElementById("timer").innerText = time;
+      clearInterval(timer);
+      timer = setInterval(() => {
+        time--;
+        document.getElementById("timer").innerText = time;
+        if (time <= 0) {
+          clearInterval(timer);
+          endGame();
+        }
+      }, 1000);
+    }
+
+    function showQuestion() {
+      if (currentQ >= questions.length) {
+        if (score >= questions.length * 2) {
+          document.getElementById("finalMessage").innerText = "Congrats! You Win!";
+        }
+        displayAnswers();
+        document.getElementById("restartBtnFinal").style.display = "block";
+        endGame();
+        return;
+      }
+      const q = questions[currentQ];
+      document.getElementById("questionText").innerText = q.q;
+      document.querySelectorAll(".optionBtn").forEach((btn, i) => {
+        btn.innerText = q.options[i];
+        btn.disabled = false;
+      });
+    }
+
+    function checkAnswer(index) {
+      document.querySelectorAll(".optionBtn").forEach(btn => btn.disabled = true);
+      const isCorrect = index === questions[currentQ].correct;
+      answeredQuestions.push({
+        question: questions[currentQ].q,
+        correctAnswer: questions[currentQ].options[questions[currentQ].correct],
+        userAnswer: questions[currentQ].options[index] || "No Answer",
+        isCorrect: isCorrect
+      });
+      if (isCorrect) {
+        score += 2;
+        document.getElementById("score").innerText = score;
+      } else {
+        document.getElementById("wrongPopup").style.display = "block";
+        setTimeout(() => {
+          document.getElementById("wrongPopup").style.display = "none";
+        }, 1500);
+      }
+      currentQ++;
+      setTimeout(showQuestion, 1500);
+    }
+
+    function displayAnswers() {
+      const summary = document.getElementById("answerSummary");
+      summary.innerHTML = '<h3>Correct Answers:</h3><ul>' + answeredQuestions.map(q =>
+        `<li><strong>${q.question}</strong><br/>Correct: ${q.correctAnswer}<br/>Your Answer: ${q.userAnswer} - ${q.isCorrect ? '✅' : '❌'}</li>`
+      ).join('') + '</ul>';
+      summary.style.display = "block";
+    }
+
+    function endGame() {
+      clearInterval(timer);
+      document.getElementById("quizBox").style.display = "none";
+      document.getElementById("gameOverBox").style.display = "block";
+    }
+  </script>
+</body>
+</html>
