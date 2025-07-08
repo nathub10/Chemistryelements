@@ -8,7 +8,7 @@
       margin: 0;
       overflow: hidden;
       font-family: Arial;
-      background: url('C:/Users/enatasr/elements.jpg') no-repeat center center fixed;
+      background: url('C:/Users/enatasr/OneDrive - Ericsson/Desktop/python game/elements.jpg') no-repeat center center fixed;
       background-size: cover;
     }
     canvas {
@@ -17,7 +17,7 @@
       left: 0;
       z-index: 5;
     }
-    #hud, #startBtn, #quizBox, #reactionBox, #message, #wrongPopup, #gameOverBox {
+    #hud, #startBtn, #quizBox, #reactionBox, #message, #wrongPopup, #gameOverBox, #answerSummary {
       position: absolute;
       z-index: 30;
     }
@@ -93,26 +93,39 @@
     }
     #gameOverBox {
       display: none;
-      top: 40%;
+      top: 30%;
       left: 50%;
       transform: translate(-50%, -50%);
       background: rgba(255, 255, 255, 0.95);
       padding: 20px 40px;
       border: 2px solid black;
       border-radius: 15px;
-      font-size: 28px;
+      font-size: 20px;
       text-align: center;
       box-shadow: 0 0 20px black;
     }
     #restartBtn {
       margin-top: 15px;
       padding: 10px 20px;
-      font-size: 20px;
+      font-size: 18px;
       background-color: darkred;
       color: white;
       border: none;
       border-radius: 8px;
       cursor: pointer;
+    }
+    #answerSummary {
+      display: none;
+      top: 60%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: white;
+      padding: 20px;
+      border-radius: 12px;
+      box-shadow: 0 0 15px black;
+      max-height: 300px;
+      overflow-y: auto;
+      font-size: 14px;
     }
   </style>
 </head>
@@ -121,7 +134,7 @@
   <div id="hud">
     Level: <span id="level">1</span> |
     Score: <span id="score">0</span> |
-    Time: <span id="timer">15</span>
+    Time: <span id="timer">25</span>
   </div>
   <div id="wrongPopup">❌ Wrong Answer!</div>
   <div id="quizBox">
@@ -135,130 +148,113 @@
     <div id="finalMessage">Game Over</div>
     <button id="restartBtn" onclick="location.reload()">Restart</button>
   </div>
+  <div id="answerSummary"></div>
   <button id="startBtn" onclick="startGame()">Start Game</button>
-
   <audio id="bgMusic" src="https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3" autoplay loop></audio>
 
   <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      document.getElementById('bgMusic').play().catch(() => {
+        document.addEventListener('click', () => {
+          document.getElementById('bgMusic').play();
+        }, { once: true });
+      });
+    });
+
     let score = 0;
     let level = 1;
     let timer;
     let currentQ = 0;
-    let questions = [
-      { q: "What is the chemical symbol for Sodium?", options: ["Na", "So", "Sn"], correct: 0 },
-      { q: "Which element is used in light bulb filaments?", options: ["Tungsten", "Aluminium", "Copper"], correct: 0 },
-      { q: "What gas is produced when acid reacts with a metal?", options: ["Hydrogen", "Oxygen", "Carbon dioxide"], correct: 0 },
-      { q: "Which element is a noble gas?", options: ["Neon", "Chlorine", "Nitrogen"], correct: 0 },
-      { q: "Which metal is liquid at room temperature?", options: ["Mercury", "Lead", "Iron"], correct: 0 },
-      { q: "What is the symbol for Iron?", options: ["Ir", "Fe", "In"], correct: 1 },
-      { q: "Which element is used in making computer chips?", options: ["Silicon", "Carbon", "Tin"], correct: 0 },
-      { q: "What is the formula of water?", options: ["H2O", "HO2", "OH2"], correct: 0 },
-      { q: "What is the atomic number of Carbon?", options: ["6", "12", "8"], correct: 0 },
-      { q: "Which element has the symbol 'K'?", options: ["Potassium", "Phosphorus", "Krypton"], correct: 0 }
+    let time;
+    const TIME_LIMIT = 25;
+    const answeredQuestions = [];
+
+    const questions = [
+      { q: "What is the chemical symbol for water?", options: ["H2O", "O2", "CO2"], correct: 0 },
+      { q: "Which gas is released in acid-metal reactions?", options: ["Hydrogen", "Oxygen", "Carbon Dioxide"], correct: 0 },
+      { q: "Which is a noble gas?", options: ["Helium", "Hydrogen", "Nitrogen"], correct: 0 },
+      { q: "Na + Cl₂ gives?", options: ["NaCl", "NaCl₂", "Na₂Cl"], correct: 0 },
+      { q: "CaCO₃ → CaO + CO₂ is what type of reaction?", options: ["Decomposition", "Combination", "Displacement"], correct: 0 },
+      { q: "Newlands' Octaves is based on which concept?", options: ["Every 8th element is similar", "Atomic mass increases by 2", "Same valency"], correct: 0 },
+      { q: "Which element follows sodium in Newlands’ Octaves showing similar properties?", options: ["Magnesium", "Potassium", "Calcium"], correct: 1 },
+      { q: "Which is a limitation of Newlands’ Octaves?", options: ["Worked only till Calcium", "Didn’t arrange by mass", "Ignored reactivity"], correct: 0 },
+      { q: "Who proposed the Law of Octaves?", options: ["John Newlands", "Mendeleev", "Dobereiner"], correct: 0 },
+      { q: "Newlands' Law of Octaves resembles which musical idea?", options: ["Piano Octaves", "Guitar Chords", "Violin Strings"], correct: 0 }
     ];
 
     function startGame() {
       document.getElementById("startBtn").style.display = "none";
       document.getElementById("quizBox").style.display = "block";
       document.getElementById("hud").style.display = "block";
-      startTimer();
       showQuestion();
-      startRain();
+      startTimer();
     }
 
     function startTimer() {
-      let time = 15;
+      time = TIME_LIMIT;
       document.getElementById("timer").innerText = time;
+      clearInterval(timer);
       timer = setInterval(() => {
         time--;
         document.getElementById("timer").innerText = time;
         if (time <= 0) {
           clearInterval(timer);
-          document.getElementById("finalMessage").innerText = "Game Over";
-          document.getElementById("gameOverBox").style.display = "block";
-          document.getElementById("quizBox").style.display = "none";
-          document.getElementById("hud").style.display = "none";
+          endGame();
         }
       }, 1000);
     }
 
     function showQuestion() {
       if (currentQ >= questions.length) {
-        document.getElementById("finalMessage").innerText = "🎉 Congrats! You Win!";
-        document.getElementById("gameOverBox").style.display = "block";
-        document.getElementById("quizBox").style.display = "none";
-        document.getElementById("hud").style.display = "none";
+        if (score >= questions.length * 2) {
+          document.getElementById("finalMessage").innerText = "Congrats! You Win!";
+        }
+        displayAnswers();
+        endGame();
         return;
       }
       const q = questions[currentQ];
       document.getElementById("questionText").innerText = q.q;
-      const buttons = document.querySelectorAll('.optionBtn');
-      buttons.forEach((btn, i) => {
+      document.querySelectorAll(".optionBtn").forEach((btn, i) => {
         btn.innerText = q.options[i];
+        btn.disabled = false;
       });
     }
 
     function checkAnswer(index) {
-      clearInterval(timer);
-      if (index === questions[currentQ].correct) {
+      document.querySelectorAll(".optionBtn").forEach(btn => btn.disabled = true);
+      const isCorrect = index === questions[currentQ].correct;
+      answeredQuestions.push({
+        question: questions[currentQ].q,
+        correctAnswer: questions[currentQ].options[questions[currentQ].correct],
+        userAnswer: questions[currentQ].options[index] || "No Answer",
+        isCorrect: isCorrect
+      });
+      if (isCorrect) {
         score += 2;
         document.getElementById("score").innerText = score;
       } else {
         document.getElementById("wrongPopup").style.display = "block";
-        setTimeout(() => document.getElementById("wrongPopup").style.display = "none", 1500);
+        setTimeout(() => {
+          document.getElementById("wrongPopup").style.display = "none";
+        }, 1500);
       }
       currentQ++;
-      document.getElementById("level").innerText = Math.floor(score / 10) + 1;
-      startTimer();
-      showQuestion();
+      setTimeout(showQuestion, 1500);
     }
 
-    // Rain effect
-    function startRain() {
-      const canvas = document.getElementById("rainCanvas");
-      const ctx = canvas.getContext("2d");
-      canvas.width = window.innerWidth;
-      canvas.height = window.innerHeight;
-      let raindrops = [];
+    function displayAnswers() {
+      const summary = document.getElementById("answerSummary");
+      summary.innerHTML = '<h3>Correct Answers:</h3><ul>' + answeredQuestions.map(q =>
+        `<li><strong>${q.question}</strong><br/>Correct: ${q.correctAnswer}<br/>Your Answer: ${q.userAnswer} - ${q.isCorrect ? '✅' : '❌'}</li>`
+      ).join('') + '</ul>';
+      summary.style.display = "block";
+    }
 
-      for (let i = 0; i < 100; i++) {
-        raindrops.push({
-          x: Math.random() * canvas.width,
-          y: Math.random() * canvas.height,
-          length: Math.random() * 20 + 10,
-          speed: Math.random() * 4 + 2
-        });
-      }
-
-      function drawRain() {
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        ctx.strokeStyle = "rgba(173,216,230,0.6)";
-        ctx.lineWidth = 2;
-        ctx.beginPath();
-        for (let drop of raindrops) {
-          ctx.moveTo(drop.x, drop.y);
-          ctx.lineTo(drop.x, drop.y + drop.length);
-        }
-        ctx.stroke();
-      }
-
-      function updateRain() {
-        for (let drop of raindrops) {
-          drop.y += drop.speed;
-          if (drop.y > canvas.height) {
-            drop.y = -drop.length;
-            drop.x = Math.random() * canvas.width;
-          }
-        }
-      }
-
-      function animateRain() {
-        drawRain();
-        updateRain();
-        requestAnimationFrame(animateRain);
-      }
-
-      animateRain();
+    function endGame() {
+      clearInterval(timer);
+      document.getElementById("quizBox").style.display = "none";
+      document.getElementById("gameOverBox").style.display = "block";
     }
   </script>
 </body>
