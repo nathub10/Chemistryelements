@@ -8,7 +8,7 @@
       margin: 0;
       overflow: hidden;
       font-family: Arial;
-      background: #7FFFD4;
+      background-color: #f0f0f0;
     }
     canvas {
       position: absolute;
@@ -103,7 +103,7 @@
       text-align: center;
       box-shadow: 0 0 20px black;
     }
-    #restartBtn, #restartBtnFinal {
+    #restartBtn, #restartBtnFinal button {
       margin-top: 15px;
       padding: 10px 20px;
       font-size: 18px;
@@ -154,7 +154,6 @@
   <div id="reactionBox">Reaction in progress...</div>
   <div id="gameOverBox">
     <div id="finalMessage">Game Over</div>
-    <button id="restartBtn" onclick="location.reload()">Restart</button>
   </div>
   <div id="answerSummary"></div>
   <div id="restartBtnFinal" style="display:none; top:85%; left:50%; transform:translateX(-50%);">
@@ -163,6 +162,105 @@
   <button id="startBtn" onclick="startGame()">Start Game</button>
   <audio id="bgMusic" src="https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3" autoplay loop></audio>
 
-  <!-- The rest of the script remains unchanged -->
+  <script>
+    const questions = [
+      { q: "What is the symbol for Sodium?", options: ["Na", "So", "Sn"], correct: 0 },
+      { q: "Which of the following is a noble gas?", options: ["Oxygen", "Argon", "Nitrogen"], correct: 1 },
+      { q: "What is the atomic number of Hydrogen?", options: ["1", "2", "3"], correct: 0 },
+      { q: "Which element is liquid at room temperature?", options: ["Mercury", "Iron", "Copper"], correct: 0 },
+      { q: "What is the formula of water?", options: ["H2O", "CO2", "HO2"], correct: 0 },
+      { q: "Which element is in Group 1 and Period 2?", options: ["Lithium", "Beryllium", "Sodium"], correct: 0 },
+      { q: "Newlands’ Octaves was based on which number pattern?", options: ["Every 8th element", "Every 6th element", "Every 4th element"], correct: 0 },
+      { q: "Which bond involves sharing of electron pairs?", options: ["Covalent bond", "Ionic bond", "Metallic bond"], correct: 0 },
+      { q: "NaCl is an example of which type of bond?", options: ["Ionic", "Covalent", "Hydrogen"], correct: 0 },
+      { q: "Newlands arranged elements by?", options: ["Increasing atomic mass", "Atomic number", "Valency"], correct: 0 }
+    ];
+
+    let currentQ = 0;
+    let score = 0;
+    let totalTime = 25;
+    let timer;
+    let answered = false;
+    const userAnswers = [];
+
+    function startGame() {
+      document.getElementById('startBtn').style.display = 'none';
+      document.getElementById('hud').style.display = 'block';
+      document.getElementById('quizBox').style.display = 'block';
+      document.getElementById('bgMusic').play();
+      currentQ = 0;
+      score = 0;
+      totalTime = 25;
+      showQuestion();
+      startTimer();
+    }
+
+    function showQuestion() {
+      if (currentQ >= questions.length) return endGame();
+      const q = questions[currentQ];
+      document.getElementById("questionText").innerText = q.q;
+      const btns = document.querySelectorAll(".optionBtn");
+      btns.forEach((btn, i) => {
+        btn.innerText = q.options[i];
+        btn.disabled = false;
+      });
+      answered = false;
+    }
+
+    function startTimer() {
+      document.getElementById("timer").innerText = totalTime;
+      timer = setInterval(() => {
+        totalTime--;
+        document.getElementById("timer").innerText = totalTime;
+        if (totalTime <= 0) {
+          clearInterval(timer);
+          endGame();
+        }
+      }, 1000);
+    }
+
+    function checkAnswer(index) {
+      if (answered) return;
+      answered = true;
+
+      const q = questions[currentQ];
+      const isCorrect = index === q.correct;
+      userAnswers.push({ question: q.q, selected: q.options[index], correct: q.options[q.correct] });
+
+      if (isCorrect) {
+        score += 2;
+        document.getElementById("score").innerText = score;
+      } else {
+        document.getElementById("wrongPopup").style.display = "block";
+        setTimeout(() => document.getElementById("wrongPopup").style.display = "none", 1000);
+      }
+
+      currentQ++;
+      if (currentQ < questions.length && totalTime > 0) {
+        setTimeout(() => {
+          showQuestion();
+        }, 1500);
+      } else {
+        setTimeout(endGame, 1500);
+      }
+    }
+
+    function endGame() {
+      clearInterval(timer);
+      document.getElementById("quizBox").style.display = "none";
+      document.getElementById("gameOverBox").style.display = "block";
+      document.getElementById("finalMessage").innerText = score >= 10 ? "Congrats! You Win!" : "Game Over";
+      showAnswers();
+    }
+
+    function showAnswers() {
+      const summary = document.getElementById("answerSummary");
+      summary.style.display = "block";
+      summary.innerHTML = "<h4>Answers:</h4>" + userAnswers.map(ans =>
+        `<p><strong>Q:</strong> ${ans.question}<br/><strong>Your:</strong> ${ans.selected || "None"}<br/><strong>Correct:</strong> ${ans.correct}</p>`
+      ).join("");
+      document.getElementById("restartBtnFinal").style.display = "block";
+    }
+  </script>
 </body>
 </html>
